@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Focus Mode Tab Killer (Strict Timer Edition)",
+  "version": "1.0.0",
+  "description": "Starts an un-cancellable focus timer that automatically closes distracting tabs using 100% local title classification.",
+  "permissions": [
+    "tabs",
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_title": "Focus Mode Tab Killer"
+  }
+}
