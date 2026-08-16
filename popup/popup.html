@@ -2,27 +2,44 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Focus Mode Tab Killer</title>
+<title>Bouncer</title>
 <style>
   :root {
-    color-scheme: light dark;
+    --bg-700: #f2f6fc;
+    --line: #d3e2f5;
+    --accent-600: #2f6fed;
+    --accent-500: #4f8bfa;
+    --accent-glow: rgba(47, 111, 237, 0.18);
+    --ink: #33455c;
+    --ink-soft: #6b7c99;
+    color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
   }
   body {
-    width: 280px;
+    width: 300px;
     margin: 0;
-    padding: 16px;
+    padding: 18px 18px 20px;
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: #111318;
-    color: #f0f0f2;
+    background: #ffffff;
+    color: var(--ink);
   }
   h1 {
-    font-size: 15px;
-    margin: 0 0 4px;
+    font-size: 17px;
+    margin: 0 0 2px;
+    text-align: center;
+    font-weight: 800;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent-600);
   }
   p.subtitle {
-    font-size: 11px;
-    color: #9a9ba3;
-    margin: 0 0 16px;
+    font-size: 10.5px;
+    color: var(--ink-soft);
+    margin: 0 0 18px;
+    text-align: center;
+    letter-spacing: 0.02em;
   }
   .setup, .locked, .expired {
     display: none;
@@ -30,113 +47,220 @@
   .setup.visible, .locked.visible, .expired.visible {
     display: block;
   }
+
+  /* ---- setup view ---- */
+  .card {
+    background: var(--bg-700);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 18px;
+    box-shadow: 0 8px 20px rgba(47, 111, 237, 0.08);
+  }
   label {
     display: block;
-    font-size: 12px;
-    color: #c4c5cc;
-    margin-bottom: 6px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--ink-soft);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 10px;
+    text-align: center;
   }
-  select, input[type="number"] {
-    width: 100%;
-    padding: 8px;
-    font-size: 13px;
-    border-radius: 6px;
-    border: 1px solid #33353f;
-    background: #1b1d24;
-    color: #f0f0f2;
-    margin-bottom: 12px;
-    box-sizing: border-box;
+  .minutes-input-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 18px;
   }
   input[type="number"] {
-    display: none;
+    width: 92px;
+    padding: 10px;
+    font-size: 24px;
+    font-weight: 800;
+    text-align: center;
+    border-radius: 10px;
+    border: 1.5px solid var(--line);
+    background: #ffffff;
+    color: var(--ink);
   }
-  input[type="number"].visible {
-    display: block;
+  input[type="number"]:focus {
+    outline: none;
+    border-color: var(--accent-600);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .unit-label {
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
   button {
     width: 100%;
-    padding: 10px;
+    padding: 12px;
     font-size: 13px;
-    font-weight: 600;
+    font-weight: 800;
     border: none;
-    border-radius: 6px;
+    border-radius: 11px;
     cursor: pointer;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
   }
   .start-btn {
-    background: #4f8cff;
+    background: var(--accent-600);
     color: white;
+    box-shadow: 0 6px 18px var(--accent-glow);
+    transition: transform 0.1s ease, filter 0.15s ease;
   }
   .start-btn:hover {
-    background: #3b7ae6;
+    filter: brightness(1.08);
   }
-  .countdown {
+  .start-btn:active {
+    transform: scale(0.98);
+  }
+  .start-btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+  .hint {
+    font-size: 10.5px;
+    color: var(--ink-soft);
     text-align: center;
-    font-size: 34px;
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    margin: 12px 0 6px;
-    color: #ff6b6b;
+    margin-top: 11px;
+    letter-spacing: 0.01em;
   }
-  .locked-note {
+  .manage-btn {
+    width: 100%;
+    margin-top: 10px;
+    background: transparent;
+    color: var(--accent-600);
+    border: none;
+    text-transform: none;
+    letter-spacing: normal;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 6px;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .manage-btn:hover {
+    color: var(--accent-500);
+  }
+
+  /* ---- locked view ---- */
+  .cat-stage {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 4px;
+    min-height: 112px;
+    align-items: center;
+  }
+  .cat-stage img {
+    width: 112px;
+    height: 112px;
+    object-fit: contain;
+    filter: drop-shadow(0 6px 14px var(--accent-glow));
+  }
+  .cat-caption {
     text-align: center;
     font-size: 11px;
-    color: #9a9ba3;
-    margin-bottom: 14px;
-  }
-  .stop-btn {
-    background: #2a2d36;
-    color: #6a6c76;
-    cursor: not-allowed;
+    color: var(--ink-soft);
+    margin-bottom: 12px;
+    min-height: 14px;
+    font-style: italic;
   }
   .status-line {
     display: flex;
     align-items: center;
-    gap: 6px;
+    gap: 7px;
     justify-content: center;
-    font-size: 11px;
-    color: #9a9ba3;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent-600);
     margin-bottom: 12px;
   }
   .dot {
-    width: 8px;
-    height: 8px;
+    width: 7px;
+    height: 7px;
     border-radius: 50%;
-    background: #ff4d4d;
-    box-shadow: 0 0 6px #ff4d4d;
+    background: var(--accent-600);
+    box-shadow: 0 0 8px var(--accent-glow);
   }
+  .countdown-ring {
+    background: var(--bg-700);
+    border: 1.5px solid var(--line);
+    border-radius: 16px;
+    padding: 16px 0;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+  .countdown {
+    font-size: 38px;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    color: var(--accent-600);
+    letter-spacing: 0.03em;
+  }
+  .locked-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin-bottom: 14px;
+  }
+  .stop-btn {
+    background: var(--bg-700);
+    color: var(--ink-soft);
+    cursor: not-allowed;
+    border: 1px solid var(--line);
+  }
+
+  /* ---- expired view ---- */
   .expired p {
     font-size: 13px;
     text-align: center;
     margin: 6px 0 16px;
+    color: var(--ink);
   }
 </style>
 </head>
 <body>
-  <h1>Focus Mode Tab Killer</h1>
-  <p class="subtitle">Strict Timer Edition &mdash; 100% local classification</p>
+  <h1>Bouncer</h1>
+  <p class="subtitle">No distractions past this point.</p>
 
   <div class="setup" id="setupView">
-    <label for="duration">Session duration</label>
-    <select id="duration">
-      <option value="15">15 minutes</option>
-      <option value="25" selected>25 minutes</option>
-      <option value="45">45 minutes</option>
-      <option value="60">60 minutes</option>
-      <option value="custom">Custom&hellip;</option>
-    </select>
-    <input type="number" id="customDuration" min="1" max="1440" step="1" placeholder="Minutes (1-1440)" />
-    <button class="start-btn" id="startBtn">Start Focus Session</button>
+    <div class="card">
+      <label for="customDuration">Set the guest list timer</label>
+      <div class="minutes-input-row">
+        <input type="number" id="customDuration" min="1" max="1440" step="1" placeholder="25" />
+        <span class="unit-label">minutes</span>
+      </div>
+      <button class="start-btn" id="startBtn">Start Session</button>
+      <p class="hint">Once started, it can't be stopped early.</p>
+    </div>
+    <button class="manage-btn" id="manageSitesBtn" type="button">Manage Guest List</button>
   </div>
 
   <div class="locked" id="lockedView">
-    <div class="status-line"><span class="dot"></span>FOCUS MODE ACTIVE</div>
-    <div class="countdown" id="countdown">00:00</div>
-    <p class="locked-note">Session is locked. It cannot be stopped early.</p>
+    <div class="cat-stage">
+      <img id="catImage" src="" alt="cat mood" />
+    </div>
+    <p class="cat-caption" id="catCaption"></p>
+    <div class="status-line"><span class="dot"></span>Bouncer is watching</div>
+    <div class="countdown-ring">
+      <div class="countdown" id="countdown">00:00</div>
+    </div>
+    <p class="locked-note">The bouncer doesn't take bribes. Locked until time's up.</p>
     <button class="stop-btn" id="stopBtn" disabled>Locked Until Timer Ends</button>
   </div>
 
   <div class="expired" id="expiredView">
-    <p>Focus session complete. 🎉</p>
+    <div class="card">
+      <p>Session's over. The bouncer's off duty. 🎉</p>
+    </div>
   </div>
 
   <script src="popup.js"></script>

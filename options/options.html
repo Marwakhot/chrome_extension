@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Bouncer Guest List</title>
+<style>
+  :root {
+    --bg-700: #f2f6fc;
+    --line: #d3e2f5;
+    --accent-600: #2f6fed;
+    --accent-500: #4f8bfa;
+    --accent-glow: rgba(47, 111, 237, 0.18);
+    --ink: #33455c;
+    --ink-soft: #6b7c99;
+    --danger-600: #c0392b;
+    --danger-500: #e05a4a;
+    --danger-glow: rgba(192, 57, 43, 0.14);
+    color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    padding: 36px 24px 60px;
+    background: #ffffff;
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .page {
+    max-width: 640px;
+    margin: 0 auto;
+  }
+  h1 {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin: 0 0 4px;
+    color: var(--accent-600);
+  }
+  p.subtitle {
+    font-size: 13px;
+    color: var(--ink-soft);
+    margin: 0 0 28px;
+  }
+  .sections {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
+  @media (max-width: 560px) {
+    .sections {
+      grid-template-columns: 1fr;
+    }
+  }
+  section.card {
+    background: var(--bg-700);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 20px;
+    box-shadow: 0 8px 20px rgba(47, 111, 237, 0.08);
+  }
+  section.card h2 {
+    font-size: 13px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin: 0 0 4px;
+  }
+  section.card p.desc {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    margin: 0 0 14px;
+    line-height: 1.4;
+  }
+  .block h2 {
+    color: var(--danger-600);
+  }
+  .allow h2 {
+    color: var(--accent-600);
+  }
+  .add-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+  input[type="text"] {
+    flex: 1;
+    padding: 9px 10px;
+    font-size: 13px;
+    border-radius: 9px;
+    border: 1.5px solid var(--line);
+    background: #ffffff;
+    color: var(--ink);
+    min-width: 0;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--accent-600);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+  .add-btn {
+    padding: 9px 14px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border: none;
+    border-radius: 9px;
+    cursor: pointer;
+    color: #ffffff;
+    white-space: nowrap;
+  }
+  .block .add-btn {
+    background: var(--danger-600);
+    box-shadow: 0 4px 12px var(--danger-glow);
+  }
+  .allow .add-btn {
+    background: var(--accent-600);
+    box-shadow: 0 4px 12px var(--accent-glow);
+  }
+  .add-btn:hover {
+    filter: brightness(1.08);
+  }
+  ul.site-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  ul.site-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 7px 10px;
+    font-size: 12.5px;
+  }
+  ul.site-list li .domain {
+    word-break: break-all;
+  }
+  ul.site-list li button {
+    border: none;
+    background: none;
+    color: var(--ink-soft);
+    font-size: 15px;
+    cursor: pointer;
+    line-height: 1;
+    padding: 2px 4px;
+  }
+  ul.site-list li button:hover {
+    color: var(--danger-600);
+  }
+  .empty-note {
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    font-style: italic;
+    padding: 4px 0;
+  }
+  .footer-note {
+    margin-top: 26px;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="page">
+    <h1>Bouncer Guest List</h1>
+    <p class="subtitle">Manage which sites always get thrown out and which ones are always let in. Only enforced while a focus session is running.</p>
+
+    <div class="sections">
+      <section class="card block">
+        <h2>Always Block</h2>
+        <p class="desc">These sites get closed on sight during a session, no classification needed.</p>
+        <div class="add-row">
+          <input type="text" id="blocklistInput" placeholder="e.g. reddit.com" />
+          <button class="add-btn" id="blocklistAddBtn">Block</button>
+        </div>
+        <ul class="site-list" id="blocklistItems"></ul>
+      </section>
+
+      <section class="card allow">
+        <h2>Never Block</h2>
+        <p class="desc">These sites are always safe, even if they'd otherwise look like a distraction.</p>
+        <div class="add-row">
+          <input type="text" id="whitelistInput" placeholder="e.g. mail.google.com" />
+          <button class="add-btn" id="whitelistAddBtn">Allow</button>
+        </div>
+        <ul class="site-list" id="whitelistItems"></ul>
+      </section>
+    </div>
+
+    <p class="footer-note">google.com, github.com, stackoverflow.com, developer.mozilla.org and localhost are always allowed by default.</p>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>

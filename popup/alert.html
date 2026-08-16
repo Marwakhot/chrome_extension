@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Bouncer</title>
+<style>
+  :root {
+    --line: #d3e2f5;
+    --accent-600: #2f6fed;
+    --accent-glow: rgba(47, 111, 237, 0.18);
+    --ink: #33455c;
+    --ink-soft: #6b7c99;
+    color-scheme: light;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  .card {
+    width: 100%;
+    padding: 20px 22px;
+    text-align: center;
+  }
+  .remark {
+    font-size: 17px;
+    font-weight: 800;
+    color: var(--accent-600);
+    margin: 0 0 8px;
+    line-height: 1.3;
+  }
+  .closed-title {
+    font-size: 11px;
+    color: var(--ink-soft);
+    margin: 0 0 18px;
+    word-break: break-word;
+    font-style: italic;
+  }
+  button {
+    background: var(--accent-600);
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 26px;
+    font-size: 12.5px;
+    font-weight: 800;
+    cursor: pointer;
+    font-family: inherit;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 6px 16px var(--accent-glow);
+  }
+  button:hover {
+    filter: brightness(1.08);
+  }
+  button:active {
+    transform: scale(0.98);
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <p class="remark" id="remark"></p>
+    <p class="closed-title" id="closedTitle"></p>
+    <button id="ackBtn"></button>
+  </div>
+  <script src="alert.js"></script>
+</body>
+</html>

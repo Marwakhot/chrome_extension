@@ -1,7 +1,26 @@
 importScripts("utils/classifier.js");
 
 const ALARM_NAME = "focusSessionExpiry";
-const POST_LOAD_DELAY_MS = 10_000;
+const POST_LOAD_DELAY_MS = 5_000;
+
+const SARCASTIC_REMARKS = [
+  "Is this who you are now?",
+  "You're better than this. Probably.",
+  "Wow. Just... wow.",
+  "That tab lasted longer than your focus.",
+  "Bold of you to try that during a focus session.",
+  "Future you is disappointed. Current you too.",
+  "Closed. Try to contain your surprise.",
+  "One does not simply doomscroll during focus mode.",
+  "That's cute. Anyway, it's closed now.",
+  "Your goals called. They're not happy.",
+  "Nice try. The tab did not survive.",
+  "Was it worth it? Be honest."
+];
+
+function pickSarcasticRemark() {
+  return SARCASTIC_REMARKS[Math.floor(Math.random() * SARCASTIC_REMARKS.length)];
+}
 
 const DEFAULT_WHITELIST = [
   "google.com",
@@ -29,8 +48,14 @@ async function isFocusActive() {
 }
 
 async function getWhitelist() {
-  const { whitelist } = await chrome.storage.local.get("whitelist");
-  return Array.isArray(whitelist) ? whitelist : DEFAULT_WHITELIST;
+  const { customWhitelist } = await chrome.storage.local.get("customWhitelist");
+  const custom = Array.isArray(customWhitelist) ? customWhitelist : [];
+  return [...DEFAULT_WHITELIST, ...custom];
+}
+
+async function getBlocklist() {
+  const { customBlocklist } = await chrome.storage.local.get("customBlocklist");
+  return Array.isArray(customBlocklist) ? customBlocklist : [];
 }
 
 function hostnameFromUrl(url) {
@@ -41,10 +66,10 @@ function hostnameFromUrl(url) {
   }
 }
 
-function isWhitelisted(url, whitelist) {
+function isHostInList(url, list) {
   const hostname = hostnameFromUrl(url);
-  if (!hostname) return true; // chrome://, file://, etc. — never touch
-  return whitelist.some(
+  if (!hostname) return false;
+  return list.some(
     (entry) => hostname === entry || hostname.endsWith(`.${entry}`)
   );
 }
@@ -62,7 +87,13 @@ async function startFocusSession(durationMinutes) {
 
   const startTime = Date.now();
   const endTime = startTime + durationMinutes * 60_000;
-  const session = { startTime, endTime, durationMinutes, active: true };
+  const session = {
+    startTime,
+    endTime,
+    durationMinutes,
+    active: true,
+    distractionCount: 0
+  };
 
   await chrome.storage.local.set({ focusSession: session });
   await chrome.alarms.create(ALARM_NAME, { when: endTime });
@@ -162,7 +193,26 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
   });
 });
 
+// A tab can complete-load more than once in quick succession (e.g. a
+// YouTube SPA re-render), which schedules more than one eval alarm before
+// the first one fires. Guard against evaluating the same tab twice at once.
+const tabsCurrentlyEvaluating = new Set();
+
 async function evaluateTab(tabId) {
+  if (tabsCurrentlyEvaluating.has(tabId)) {
+    console.log(`[FocusMode] tab ${tabId} is already being evaluated, skipping duplicate`);
+    return;
+  }
+  tabsCurrentlyEvaluating.add(tabId);
+
+  try {
+    await evaluateTabInner(tabId);
+  } finally {
+    tabsCurrentlyEvaluating.delete(tabId);
+  }
+}
+
+async function evaluateTabInner(tabId) {
   console.log(`[FocusMode] evaluateTab(${tabId}) firing`);
 
   // Re-check focus mode is still active after the delay.
@@ -189,10 +239,25 @@ async function evaluateTab(tabId) {
     console.log(`[FocusMode] tab ${tabId} has placeholder title, skipping`);
     return;
   }
+  if (!hostnameFromUrl(tab.url)) {
+    // chrome://, file://, extension pages, etc. are never touched.
+    console.log(`[FocusMode] tab ${tabId} has no scriptable hostname, skipping`);
+    return;
+  }
 
+  // "Never block" always wins, even over the user's own block list.
   const whitelist = await getWhitelist();
-  if (isWhitelisted(tab.url, whitelist)) {
+  if (isHostInList(tab.url, whitelist)) {
     console.log(`[FocusMode] tab ${tabId} is whitelisted, skipping`);
+    return;
+  }
+
+  // User's explicit block list closes the tab immediately, no
+  // classification needed.
+  const blocklist = await getBlocklist();
+  if (isHostInList(tab.url, blocklist)) {
+    console.log(`[FocusMode] tab ${tabId} matches the block list, closing`);
+    await closeDistractionTab(tabId, tab.title);
     return;
   }
 
@@ -202,11 +267,106 @@ async function evaluateTab(tabId) {
   console.log(`[FocusMode] tab ${tabId} classified as ${isDistraction ? "DISTRACTION" : "WORK"}`);
 
   if (isDistraction) {
-    try {
-      await chrome.tabs.remove(tabId);
-      console.log(`[FocusMode] closed tab ${tabId}`);
-    } catch (err) {
-      console.log(`[FocusMode] failed to close tab ${tabId}:`, err);
-    }
+    await closeDistractionTab(tabId, tab.title);
   }
+}
+
+async function closeDistractionTab(tabId, tabTitle) {
+  try {
+    await chrome.tabs.remove(tabId);
+    console.log(`[FocusMode] closed tab ${tabId}`);
+    await recordDistraction();
+    notifyTabClosed(tabTitle);
+  } catch (err) {
+    // Benign race: the tab was already closed (by the user, or by an
+    // earlier evaluation of the same tab) between our tabs.get() check
+    // above and this remove() call, so there's nothing left to do.
+    console.log(`[FocusMode] tab ${tabId} was already gone by the time we tried to close it:`, err.message);
+  }
+}
+
+async function notifyTabClosed(closedTabTitle) {
+  const remark = pickSarcasticRemark();
+  const shown = await showTopPopupAlert(remark, closedTabTitle);
+  if (!shown) {
+    showOsNotification(remark, closedTabTitle);
+  }
+}
+
+// Opens a small floating extension window near the top of the current
+// Chrome window with the sarcastic remark + an OK button. Unlike injecting
+// into the page DOM, this doesn't depend on what tab happens to be active
+// (which is often an unscriptable chrome://newtab page right after closing
+// a tab), so it's a real top-level browser window that always works.
+async function showTopPopupAlert(remark, closedTabTitle) {
+  try {
+    const popupWidth = 360;
+    const popupHeight = 210;
+
+    let top = 80;
+    let left = 400;
+    try {
+      const parentWindow = await chrome.windows.getLastFocused({
+        windowTypes: ["normal"]
+      });
+      if (parentWindow?.left != null && parentWindow?.width != null) {
+        top = parentWindow.top + 70;
+        left = Math.round(parentWindow.left + (parentWindow.width - popupWidth) / 2);
+      }
+    } catch {
+      // fall through with default position
+    }
+
+    const url =
+      chrome.runtime.getURL("popup/alert.html") +
+      `?remark=${encodeURIComponent(remark)}&title=${encodeURIComponent(closedTabTitle)}`;
+
+    const popupWindow = await chrome.windows.create({
+      url,
+      type: "popup",
+      width: popupWidth,
+      height: popupHeight,
+      top,
+      left,
+      focused: true
+    });
+
+    chrome.windows.update(popupWindow.id, { drawAttention: true });
+    console.log(`[FocusMode] top popup alert shown (window ${popupWindow.id})`);
+    return true;
+  } catch (err) {
+    console.log("[FocusMode] could not open popup alert window, falling back to OS notification:", err.message);
+    return false;
+  }
+}
+
+function showOsNotification(remark, closedTabTitle) {
+  chrome.notifications.create(
+    "",
+    {
+      type: "basic",
+      iconUrl: "icons/cats/3_cat.png",
+      title: remark,
+      message: `Closed: "${closedTabTitle}"`,
+      priority: 1
+    },
+    (notificationId) => {
+      if (chrome.runtime.lastError) {
+        console.log(
+          "[FocusMode] notification failed:",
+          chrome.runtime.lastError.message
+        );
+      } else {
+        console.log(`[FocusMode] notification shown: ${notificationId}`);
+      }
+    }
+  );
+}
+
+async function recordDistraction() {
+  const session = await getSession();
+  if (!session) return;
+  session.distractionCount = (session.distractionCount || 0) + 1;
+  await chrome.storage.local.set({ focusSession: session });
+  console.log(`[FocusMode] distractionCount is now ${session.distractionCount}`);
 }

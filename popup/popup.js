@@ -1,11 +1,28 @@
 const setupView = document.getElementById("setupView");
 const lockedView = document.getElementById("lockedView");
 const expiredView = document.getElementById("expiredView");
-const durationSelect = document.getElementById("duration");
 const customDurationInput = document.getElementById("customDuration");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
 const countdownEl = document.getElementById("countdown");
+const catImage = document.getElementById("catImage");
+const catCaption = document.getElementById("catCaption");
+const manageSitesBtn = document.getElementById("manageSitesBtn");
+
+manageSitesBtn.addEventListener("click", () => {
+  chrome.runtime.openOptionsPage();
+});
+
+// Every 3 closed distraction tabs, the cat advances to the next, madder
+// stage. After the final "mad" stage the cat storms off, then disappears.
+const CAT_STAGES = [
+  { src: "../icons/cats/1_cat.png", caption: "" },
+  { src: "../icons/cats/2_cat.png", caption: "getting annoyed..." },
+  { src: "../icons/cats/3_cat.png", caption: "pretty mad now." },
+  { src: "../icons/cats/4_cat.png", caption: "furious." },
+  { src: "../icons/cats/5_cat.png", caption: "the cat has had enough." }
+];
+const DISTRACTIONS_PER_STAGE = 3;
 
 let tickInterval = null;
 
@@ -34,6 +51,19 @@ function stopTicking() {
   }
 }
 
+function updateCatMood(distractionCount) {
+  const stageIndex = Math.floor((distractionCount || 0) / DISTRACTIONS_PER_STAGE);
+  if (stageIndex >= CAT_STAGES.length) {
+    catImage.style.visibility = "hidden";
+    catCaption.textContent = "the cat left. it's just you now.";
+    return;
+  }
+  const stage = CAT_STAGES[stageIndex];
+  catImage.style.visibility = "visible";
+  catImage.src = stage.src;
+  catCaption.textContent = stage.caption;
+}
+
 async function refresh() {
   const { session } = (await sendMessage({ type: "GET_SESSION" })) || {};
 
@@ -41,6 +71,7 @@ async function refresh() {
 
   if (session && Date.now() < session.endTime) {
     showView(lockedView);
+    updateCatMood(session.distractionCount);
     const tick = () => {
       const remaining = session.endTime - Date.now();
       if (remaining <= 0) {
@@ -53,7 +84,7 @@ async function refresh() {
     tick();
     tickInterval = setInterval(tick, 1000);
   } else if (session) {
-    // Session object exists but has expired — background will clear it
+    // Session object exists but has expired. Background will clear it
     // on its own via the alarm; show a brief "complete" state meanwhile.
     showView(expiredView);
   } else {
@@ -61,23 +92,14 @@ async function refresh() {
   }
 }
 
-durationSelect.addEventListener("change", () => {
-  const isCustom = durationSelect.value === "custom";
-  customDurationInput.classList.toggle("visible", isCustom);
-  if (isCustom) customDurationInput.focus();
-});
-
-function getSelectedDurationMinutes() {
-  if (durationSelect.value === "custom") {
-    const value = Math.floor(Number(customDurationInput.value));
-    if (!Number.isFinite(value) || value < 1 || value > 1440) return null;
-    return value;
-  }
-  return Number(durationSelect.value);
+function getEnteredDurationMinutes() {
+  const value = Math.floor(Number(customDurationInput.value));
+  if (!Number.isFinite(value) || value < 1 || value > 1440) return null;
+  return value;
 }
 
 startBtn.addEventListener("click", async () => {
-  const durationMinutes = getSelectedDurationMinutes();
+  const durationMinutes = getEnteredDurationMinutes();
   if (durationMinutes === null) {
     customDurationInput.focus();
     customDurationInput.reportValidity?.();
@@ -92,13 +114,25 @@ startBtn.addEventListener("click", async () => {
   refresh();
 });
 
-// The stop button is permanently disabled while locked — this handler
+// The stop button is permanently disabled while locked. This handler
 // exists only as defense in depth. The background service worker is the
 // real enforcement point and will reject any STOP_SESSION message sent
 // before endTime.
 stopBtn.addEventListener("click", async () => {
   await sendMessage({ type: "STOP_SESSION" });
   refresh();
+});
+
+// Live-update the cat's mood the instant a distracting tab gets closed,
+// without waiting for the once-a-second countdown tick.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.focusSession) return;
+  const newSession = changes.focusSession.newValue;
+  if (newSession && Date.now() < newSession.endTime) {
+    updateCatMood(newSession.distractionCount);
+  } else {
+    refresh();
+  }
 });
 
 refresh();

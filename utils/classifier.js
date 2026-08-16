@@ -3,8 +3,8 @@
  *
  * Primary path: Chrome's built-in on-device Prompt API (window.ai /
  * chrome.aiOriginTrial.languageModel), when available in this Chrome build.
- * All inference for that path runs on-device via Gemini Nano — no network
- * calls, no API keys.
+ * All inference for that path runs on-device via Gemini Nano, with no
+ * network calls and no API keys.
  *
  * Fallback path: a lightweight local heuristic/keyword classifier. This
  * keeps the extension fully functional on Chrome versions/channels where
@@ -15,7 +15,7 @@
 // ---- Fallback keyword model -----------------------------------------
 
 const DISTRACTION_KEYWORDS = [
-  "youtube", "reddit", "tiktok", "instagram", "facebook", "twitter", "x.com",
+  "reddit", "tiktok", "instagram", "facebook", "twitter", "x.com",
   "netflix", "hulu", "disney+", "twitch", "9gag", "buzzfeed", "pinterest",
   "snapchat", "discord chat", "meme", "memes", "gossip", "celebrity",
   "highlights", "funny video", "prank", "trailer", "gameplay", "let's play",
@@ -61,7 +61,7 @@ function keywordClassify(title) {
   }
 
   // Ties, or no signal at all, default to NOT closing the tab
-  // (fail open toward productivity — never punish an unrecognized page).
+  // (fail open toward productivity; never punish an unrecognized page).
   return distractionScore > productiveScore;
 }
 
@@ -126,20 +126,49 @@ async function getPromptSession() {
   }
 }
 
+// The very first call to the on-device model (session creation and/or its
+// first prompt()) can hang for a long time, e.g. Gemini Nano still
+// downloading/initializing in the background. Without a bound, that first
+// call can block classification indefinitely and the tab never gets
+// evaluated no matter how long you wait. Bound the whole model round trip
+// so a stuck first call falls back to the (fast, reliable) keyword model
+// instead of hanging forever.
+const PROMPT_API_TIMEOUT_MS = 3000;
+
+function withTimeout(promise, ms) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error("prompt API timed out")), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(timer);
+        reject(err);
+      }
+    );
+  });
+}
+
 async function promptApiClassify(title) {
+  try {
+    return await withTimeout(promptApiClassifyInner(title), PROMPT_API_TIMEOUT_MS);
+  } catch (err) {
+    console.warn("[FocusMode] Prompt API inference failed/timed out, using local fallback:", err.message);
+    return null;
+  }
+}
+
+async function promptApiClassifyInner(title) {
   const session = await getPromptSession();
   if (!session) return null;
 
-  try {
-    const response = await session.prompt(`Tab title: "${title}"`);
-    const normalized = response.trim().toUpperCase();
-    if (normalized.includes("DISTRACTION")) return true;
-    if (normalized.includes("WORK")) return false;
-    return null; // ambiguous model output, fall back to keyword model
-  } catch (err) {
-    console.warn("[FocusMode] Prompt API inference failed, using local fallback:", err);
-    return null;
-  }
+  const response = await session.prompt(`Tab title: "${title}"`);
+  const normalized = response.trim().toUpperCase();
+  if (normalized.includes("DISTRACTION")) return true;
+  if (normalized.includes("WORK")) return false;
+  return null; // ambiguous model output, fall back to keyword model
 }
 
 /**

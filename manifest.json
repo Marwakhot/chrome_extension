@@ -1,12 +1,13 @@
 {
   "manifest_version": 3,
-  "name": "Focus Mode Tab Killer (Strict Timer Edition)",
+  "name": "Bouncer",
   "version": "1.0.0",
-  "description": "Starts an un-cancellable focus timer that automatically closes distracting tabs using 100% local title classification.",
+  "description": "Bouncer runs an un-cancellable focus timer and throws out distracting tabs on sight, using 100% local title classification.",
   "permissions": [
     "tabs",
     "storage",
-    "alarms"
+    "alarms",
+    "notifications"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -16,6 +17,10 @@
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "Focus Mode Tab Killer"
+    "default_title": "Bouncer"
+  },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": true
   }
 }
