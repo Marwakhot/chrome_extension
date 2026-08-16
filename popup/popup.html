@@ -41,10 +41,10 @@
     text-align: center;
     letter-spacing: 0.02em;
   }
-  .setup, .locked, .expired {
+  .setup, .locked {
     display: none;
   }
-  .setup.visible, .locked.visible, .expired.visible {
+  .setup.visible, .locked.visible {
     display: block;
   }
 
@@ -217,14 +217,6 @@
     cursor: not-allowed;
     border: 1px solid var(--line);
   }
-
-  /* ---- expired view ---- */
-  .expired p {
-    font-size: 13px;
-    text-align: center;
-    margin: 6px 0 16px;
-    color: var(--ink);
-  }
 </style>
 </head>
 <body>
@@ -255,12 +247,6 @@
     </div>
     <p class="locked-note">The bouncer doesn't take bribes. Locked until time's up.</p>
     <button class="stop-btn" id="stopBtn" disabled>Locked Until Timer Ends</button>
-  </div>
-
-  <div class="expired" id="expiredView">
-    <div class="card">
-      <p>Session's over. The bouncer's off duty. 🎉</p>
-    </div>
   </div>
 
   <script src="popup.js"></script>

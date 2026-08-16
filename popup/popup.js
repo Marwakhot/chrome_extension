@@ -1,6 +1,5 @@
 const setupView = document.getElementById("setupView");
 const lockedView = document.getElementById("lockedView");
-const expiredView = document.getElementById("expiredView");
 const customDurationInput = document.getElementById("customDuration");
 const startBtn = document.getElementById("startBtn");
 const stopBtn = document.getElementById("stopBtn");
@@ -31,7 +30,7 @@ function sendMessage(message) {
 }
 
 function showView(view) {
-  for (const el of [setupView, lockedView, expiredView]) {
+  for (const el of [setupView, lockedView]) {
     el.classList.remove("visible");
   }
   view.classList.add("visible");
@@ -84,9 +83,12 @@ async function refresh() {
     tick();
     tickInterval = setInterval(tick, 1000);
   } else if (session) {
-    // Session object exists but has expired. Background will clear it
-    // on its own via the alarm; show a brief "complete" state meanwhile.
-    showView(expiredView);
+    // Session object exists but has expired (e.g. the popup was reopened
+    // right at expiry, before the background alarm cleared it). Clear it
+    // now so a new session can be started, rather than getting stuck on
+    // a dead-end "complete" screen.
+    await sendMessage({ type: "STOP_SESSION" });
+    showView(setupView);
   } else {
     showView(setupView);
   }
