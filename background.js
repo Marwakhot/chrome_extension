@@ -1,4 +1,4 @@
-importScripts("utils/classifier.js");
+importScripts("utils/classifier.js", "utils/supabaseConfig.js", "utils/supabaseAuth.js");
 
 const ALARM_NAME = "focusSessionExpiry";
 const POST_LOAD_DELAY_MS = 5_000;
@@ -98,10 +98,38 @@ async function startFocusSession(durationMinutes) {
   await chrome.storage.local.set({ focusSession: session });
   await chrome.alarms.create(ALARM_NAME, { when: endTime });
 
+  logSessionStartRemote(startTime, durationMinutes);
+
   return session;
 }
 
+// Best-effort: if the user is signed in, create the matching row in
+// Supabase for the dashboard. If they're not signed in (or offline, or
+// Supabase isn't configured), this silently no-ops. The timer and tab
+// classification work fully locally either way.
+async function logSessionStartRemote(startTime, durationMinutes) {
+  try {
+    const remoteId = await self.BouncerAuth.createFocusSessionRecord(durationMinutes);
+    if (!remoteId) return;
+    const current = await getSession();
+    if (current && current.startTime === startTime) {
+      current.remoteId = remoteId;
+      await chrome.storage.local.set({ focusSession: current });
+    }
+  } catch (err) {
+    console.log("[Bouncer] not logging this session to Supabase:", err.message);
+  }
+}
+
 async function endFocusSession() {
+  const session = await getSession();
+  if (session?.remoteId) {
+    self.BouncerAuth.updateFocusSessionRecord(session.remoteId, {
+      ended_at: new Date().toISOString(),
+      distraction_count: session.distractionCount || 0
+    }).catch((err) => console.log("[Bouncer] could not finalize session in Supabase:", err.message));
+  }
+
   await chrome.storage.local.set({
     focusSession: null
   });
@@ -369,4 +397,10 @@ async function recordDistraction() {
   session.distractionCount = (session.distractionCount || 0) + 1;
   await chrome.storage.local.set({ focusSession: session });
   console.log(`[FocusMode] distractionCount is now ${session.distractionCount}`);
+
+  if (session.remoteId) {
+    self.BouncerAuth.updateFocusSessionRecord(session.remoteId, {
+      distraction_count: session.distractionCount
+    }).catch((err) => console.log("[Bouncer] could not sync distraction count to Supabase:", err.message));
+  }
 }

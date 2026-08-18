@@ -20,7 +20,7 @@
     "default_title": "Bouncer"
   },
   "options_ui": {
-    "page": "options/options.html",
+    "page": "dashboard/dashboard.html",
     "open_in_tab": true
   }
 }

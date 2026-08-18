@@ -6,9 +6,9 @@ const stopBtn = document.getElementById("stopBtn");
 const countdownEl = document.getElementById("countdown");
 const catImage = document.getElementById("catImage");
 const catCaption = document.getElementById("catCaption");
-const manageSitesBtn = document.getElementById("manageSitesBtn");
+const dashboardBtn = document.getElementById("dashboardBtn");
 
-manageSitesBtn.addEventListener("click", () => {
+dashboardBtn.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
 });
 
