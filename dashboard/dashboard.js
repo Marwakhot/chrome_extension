@@ -1,4 +1,127 @@
 // -----------------------------------------------------------------------
+// Start a session (mirrors popup.js, since the dashboard is a full tab and
+// can talk to the background service worker the same way the popup does)
+// -----------------------------------------------------------------------
+
+const dashSetupView = document.getElementById("dashSetupView");
+const dashLockedView = document.getElementById("dashLockedView");
+const dashCustomDuration = document.getElementById("dashCustomDuration");
+const dashStartBtn = document.getElementById("dashStartBtn");
+const dashCountdown = document.getElementById("dashCountdown");
+const dashCatImage = document.getElementById("dashCatImage");
+const dashCatCaption = document.getElementById("dashCatCaption");
+
+// Same mood progression as the popup's in-session cat: every 3 closed
+// distraction tabs, the cat advances to the next, madder stage.
+const SESSION_CAT_STAGES = [
+  { src: "../icons/cats/1_cat.png", caption: "" },
+  { src: "../icons/cats/2_cat.png", caption: "getting annoyed..." },
+  { src: "../icons/cats/3_cat.png", caption: "pretty mad now." },
+  { src: "../icons/cats/4_cat.png", caption: "furious." },
+  { src: "../icons/cats/5_cat.png", caption: "the cat has had enough." }
+];
+const SESSION_DISTRACTIONS_PER_STAGE = 3;
+
+let sessionTickInterval = null;
+
+function sendBackgroundMessage(message) {
+  return chrome.runtime.sendMessage(message);
+}
+
+function formatRemainingTime(ms) {
+  const totalSeconds = Math.max(0, Math.ceil(ms / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function stopSessionTicking() {
+  if (sessionTickInterval) {
+    clearInterval(sessionTickInterval);
+    sessionTickInterval = null;
+  }
+}
+
+function updateSessionCatMood(distractionCount) {
+  const stageIndex = Math.floor((distractionCount || 0) / SESSION_DISTRACTIONS_PER_STAGE);
+  if (stageIndex >= SESSION_CAT_STAGES.length) {
+    dashCatImage.style.visibility = "hidden";
+    dashCatCaption.textContent = "the cat left. it's just you now.";
+    return;
+  }
+  const stage = SESSION_CAT_STAGES[stageIndex];
+  dashCatImage.style.visibility = "visible";
+  dashCatImage.src = stage.src;
+  dashCatCaption.textContent = stage.caption;
+}
+
+async function refreshSessionCard() {
+  const { session } = (await sendBackgroundMessage({ type: "GET_SESSION" })) || {};
+
+  stopSessionTicking();
+
+  if (session && Date.now() < session.endTime) {
+    dashSetupView.classList.add("hidden");
+    dashLockedView.classList.add("visible");
+    updateSessionCatMood(session.distractionCount);
+    const tick = () => {
+      const remaining = session.endTime - Date.now();
+      if (remaining <= 0) {
+        stopSessionTicking();
+        refreshSessionCard();
+        return;
+      }
+      dashCountdown.textContent = formatRemainingTime(remaining);
+    };
+    tick();
+    sessionTickInterval = setInterval(tick, 1000);
+  } else if (session) {
+    // Expired but not yet cleared by the background alarm.
+    await sendBackgroundMessage({ type: "STOP_SESSION" });
+    dashSetupView.classList.remove("hidden");
+    dashLockedView.classList.remove("visible");
+  } else {
+    dashSetupView.classList.remove("hidden");
+    dashLockedView.classList.remove("visible");
+  }
+}
+
+function getDashDurationMinutes() {
+  const value = Math.floor(Number(dashCustomDuration.value));
+  if (!Number.isFinite(value) || value < 1 || value > 1440) return null;
+  return value;
+}
+
+dashStartBtn.addEventListener("click", async () => {
+  const durationMinutes = getDashDurationMinutes();
+  if (durationMinutes === null) {
+    dashCustomDuration.focus();
+    dashCustomDuration.reportValidity?.();
+    return;
+  }
+  dashStartBtn.disabled = true;
+  try {
+    await sendBackgroundMessage({ type: "START_SESSION", durationMinutes });
+  } finally {
+    dashStartBtn.disabled = false;
+  }
+  refreshSessionCard();
+});
+
+// Live-update the cat's mood the instant a distracting tab gets closed.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== "local" || !changes.focusSession) return;
+  const newSession = changes.focusSession.newValue;
+  if (newSession && Date.now() < newSession.endTime) {
+    updateSessionCatMood(newSession.distractionCount);
+  } else {
+    refreshSessionCard();
+  }
+});
+
+refreshSessionCard();
+
+// -----------------------------------------------------------------------
 // Guest list management (block list / whitelist)
 // -----------------------------------------------------------------------
 
@@ -144,6 +267,9 @@ const calNextBtn = document.getElementById("calNextBtn");
 const calMonthLabel = document.getElementById("calMonthLabel");
 const calendarGrid = document.getElementById("calendarGrid");
 
+const topSitesEmpty = document.getElementById("topSitesEmpty");
+const topSitesList = document.getElementById("topSitesList");
+
 function setAuthMessage(text, kind) {
   authMessage.textContent = text;
   authMessage.className = kind ? `auth-message ${kind}` : "auth-message";
@@ -215,6 +341,7 @@ async function showSignedInState() {
   analyticsSection.style.display = "block";
   await loadDailyGoal();
   loadAnalytics();
+  loadTopSites();
 }
 
 function formatMinutes(totalMinutes) {
@@ -340,6 +467,64 @@ function renderStatTiles(totalSessions, totalFocusMinutes, totalDistractions) {
 let byDayCache = new Map(); // dateKey -> { sessions, focusMinutes, distractions }
 let dailyGoal = 5;
 let calendarMonthOffset = 0; // 0 = current month, negative = past months
+
+const TOP_SITES_LIMIT = 8;
+
+async function loadTopSites() {
+  let events;
+  try {
+    events = await self.BouncerAuth.listDistractionEvents();
+  } catch (err) {
+    console.warn("[Bouncer] could not load top distracting sites:", err.message);
+    return;
+  }
+
+  if (!events || events.length === 0) {
+    topSitesEmpty.style.display = "block";
+    topSitesList.innerHTML = "";
+    return;
+  }
+
+  const counts = new Map();
+  for (const event of events) {
+    const domain = event.domain || "unknown";
+    counts.set(domain, (counts.get(domain) || 0) + 1);
+  }
+
+  const ranked = [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_SITES_LIMIT);
+  const maxCount = ranked[0][1];
+
+  topSitesEmpty.style.display = "none";
+  topSitesList.innerHTML = "";
+
+  for (const [domain, count] of ranked) {
+    const li = document.createElement("li");
+    li.className = "site-rank-row";
+
+    const domainSpan = document.createElement("span");
+    domainSpan.className = "site-rank-domain";
+    domainSpan.textContent = domain;
+    domainSpan.title = domain;
+
+    const barTrack = document.createElement("div");
+    barTrack.className = "bar-track";
+    const barFill = document.createElement("div");
+    barFill.className = "bar-fill";
+    barFill.style.width = `${Math.round((count / maxCount) * 100)}%`;
+    barTrack.appendChild(barFill);
+
+    const countSpan = document.createElement("span");
+    countSpan.className = "site-rank-count";
+    countSpan.textContent = count;
+
+    li.appendChild(domainSpan);
+    li.appendChild(barTrack);
+    li.appendChild(countSpan);
+    topSitesList.appendChild(li);
+  }
+}
 
 async function loadDailyGoal() {
   try {

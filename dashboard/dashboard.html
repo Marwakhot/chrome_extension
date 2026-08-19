@@ -24,22 +24,6 @@
     align-items: center;
     gap: 16px;
   }
-  .brand .cat-badge {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
-    background: var(--surface);
-    border: var(--border-w) solid #000;
-    box-shadow: 4px 4px 0 #000;
-  }
-  .brand img {
-    width: 44px;
-    height: 44px;
-    object-fit: contain;
-  }
   h1 {
     font-size: 26px;
     font-weight: 900;
@@ -118,6 +102,107 @@
   }
 
   /* ---- guest list column ---- */
+  .session-card {
+    margin-bottom: 28px;
+  }
+  .cat-stage-lg {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 14px;
+  }
+  .cat-stage-lg img {
+    width: 180px;
+    height: 180px;
+    object-fit: contain;
+  }
+  .cat-caption {
+    text-align: center;
+    font-size: 11.5px;
+    color: var(--ink-soft);
+    margin: 0 0 16px;
+    min-height: 14px;
+    font-style: italic;
+    font-weight: 600;
+  }
+  .minutes-input-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 9px;
+    margin-bottom: 18px;
+  }
+  .minutes-input-row input[type="number"] {
+    width: 92px;
+    padding: 8px;
+    font-family: var(--font-mono);
+    font-size: 28px;
+    font-weight: 700;
+    text-align: center;
+  }
+  .unit-label {
+    font-size: 13px;
+    color: var(--ink-soft);
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+  .session-start-btn {
+    width: 100%;
+    padding: 13px;
+    font-size: 13px;
+  }
+  .hint {
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    text-align: center;
+    margin: 10px 0 0;
+  }
+  .status-line {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    justify-content: center;
+    font-size: 10.5px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #000;
+    margin-bottom: 12px;
+  }
+  .dot {
+    width: 8px;
+    height: 8px;
+    background: var(--accent);
+    border: 1.5px solid #000;
+  }
+  .countdown-ring {
+    background: var(--well-bg);
+    border: var(--border-w) solid #000;
+    padding: 16px 0;
+    text-align: center;
+    margin-bottom: 14px;
+  }
+  .countdown {
+    font-size: 40px;
+    color: #000;
+  }
+  .locked-note {
+    text-align: center;
+    font-size: 11px;
+    color: var(--ink-faint);
+    margin: 0;
+    font-weight: 600;
+  }
+  .session-locked {
+    display: none;
+  }
+  .session-locked.visible {
+    display: block;
+  }
+  .session-setup.hidden {
+    display: none;
+  }
+
   .guest-list-sections {
     display: flex;
     flex-direction: column;
@@ -504,7 +589,7 @@
   }
 
   /* ---- streaks card ---- */
-  .streaks-card {
+  #analyticsSection section.card + section.card {
     margin-top: 20px;
   }
   .goal-row {
@@ -538,10 +623,72 @@
     color: #000;
     margin: 4px 0 20px;
   }
+  .streak-layout {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+  }
+  .calendar-col {
+    flex: 0 0 auto;
+    padding-right: 24px;
+  }
+  .top-sites-col {
+    flex: 1;
+    min-width: 0;
+    padding-left: 24px;
+    border-left: 2px solid #000;
+  }
+  .top-sites-col .col-heading {
+    margin: 0 0 12px;
+  }
+  @media (max-width: 560px) {
+    .streak-layout {
+      flex-direction: column;
+    }
+    .calendar-col {
+      padding-right: 0;
+      padding-bottom: 20px;
+    }
+    .top-sites-col {
+      padding-left: 0;
+      padding-top: 20px;
+      border-left: none;
+      border-top: 2px solid #000;
+    }
+  }
+  ul.site-rank-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .site-rank-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .site-rank-domain {
+    width: 150px;
+    flex-shrink: 0;
+    font-size: 12.5px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .site-rank-count {
+    width: 20px;
+    flex-shrink: 0;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: right;
+  }
   .calendar-header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 14px;
     margin-bottom: 10px;
   }
@@ -568,7 +715,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 3px;
-    margin: 0 auto 4px;
+    margin: 0 0 4px;
     max-width: 224px;
   }
   .calendar-weekdays span {
@@ -581,7 +728,7 @@
     display: grid;
     grid-template-columns: repeat(7, 1fr);
     gap: 3px;
-    margin: 0 auto;
+    margin: 0;
     max-width: 224px;
   }
   .cal-day {
@@ -611,7 +758,7 @@
   }
   .calendar-legend {
     display: flex;
-    justify-content: center;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 12px;
     margin-top: 12px;
@@ -642,9 +789,6 @@
   <div class="page">
     <header class="top">
       <div class="brand">
-        <div class="cat-badge">
-          <img src="../icons/cats/1_cat.png" alt="Bouncer" />
-        </div>
         <div>
           <h1>Bouncer</h1>
           <p class="subtitle">Your guest list and your focus stats, in one place.</p>
@@ -658,6 +802,35 @@
 
     <div class="columns">
       <div>
+        <p class="col-heading">Start a Session</p>
+        <section class="card session-card">
+          <div class="card-body">
+            <div class="session-setup" id="dashSetupView">
+              <div class="cat-stage-lg">
+                <img src="../icons/cats/1_cat.png" alt="Bouncer cat" />
+              </div>
+              <div class="minutes-input-row">
+                <input type="number" id="dashCustomDuration" min="1" max="1440" step="1" placeholder="25" />
+                <span class="unit-label">minutes</span>
+              </div>
+              <button class="btn btn-primary session-start-btn" id="dashStartBtn">Start Session</button>
+              <p class="hint">Once started, it can't be stopped early.</p>
+            </div>
+
+            <div class="session-locked" id="dashLockedView">
+              <div class="cat-stage-lg">
+                <img id="dashCatImage" src="" alt="cat mood" />
+              </div>
+              <p class="cat-caption" id="dashCatCaption"></p>
+              <div class="status-line"><span class="dot"></span>Bouncer is watching</div>
+              <div class="countdown-ring">
+                <div class="countdown numeral" id="dashCountdown">00:00</div>
+              </div>
+              <p class="locked-note">The bouncer doesn't take bribes. Locked until time's up.</p>
+            </div>
+          </div>
+        </section>
+
         <p class="col-heading">Guest List</p>
         <div class="guest-list-sections">
           <section class="card block">
@@ -745,6 +918,45 @@
             </div>
           </div>
 
+          <section class="card streaks-card">
+            <div class="card-body">
+              <h2>Distraction Goal &amp; Streak</h2>
+              <div class="goal-row">
+                <label for="goalInput">Distracted no more than</label>
+                <input type="number" id="goalInput" min="0" max="99" value="5" />
+                <span>times a day</span>
+                <button class="btn btn-primary" id="goalSaveBtn" type="button">Save</button>
+              </div>
+              <p class="streak-summary" id="streakSummary">Current streak: 0 days</p>
+
+              <div class="streak-layout">
+                <div class="calendar-col">
+                  <div class="calendar-header">
+                    <button class="btn cal-nav-btn" id="calPrevBtn" type="button">&larr;</button>
+                    <span class="cal-month-label" id="calMonthLabel"></span>
+                    <button class="btn cal-nav-btn" id="calNextBtn" type="button">&rarr;</button>
+                  </div>
+                  <div class="calendar-weekdays">
+                    <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+                  </div>
+                  <div class="calendar-grid" id="calendarGrid"></div>
+
+                  <div class="calendar-legend">
+                    <span><i class="legend-dot met"></i>Goal met</span>
+                    <span><i class="legend-dot missed"></i>Goal missed</span>
+                    <span><i class="legend-dot none"></i>No session</span>
+                  </div>
+                </div>
+
+                <div class="top-sites-col">
+                  <p class="col-heading">Top Distracting Sites</p>
+                  <p class="empty-note" id="topSitesEmpty">No distractions logged yet.</p>
+                  <ul class="site-rank-list" id="topSitesList"></ul>
+                </div>
+              </div>
+            </div>
+          </section>
+
           <section class="card">
             <div class="card-body">
               <p class="loading-state" id="loadingState">Loading your stats...</p>
@@ -760,35 +972,6 @@
                 </thead>
                 <tbody id="dailyTableBody"></tbody>
               </table>
-            </div>
-          </section>
-
-          <section class="card streaks-card">
-            <div class="card-body">
-              <h2>Distraction Goal &amp; Streak</h2>
-              <div class="goal-row">
-                <label for="goalInput">Distracted no more than</label>
-                <input type="number" id="goalInput" min="0" max="99" value="5" />
-                <span>times a day</span>
-                <button class="btn btn-primary" id="goalSaveBtn" type="button">Save</button>
-              </div>
-              <p class="streak-summary" id="streakSummary">Current streak: 0 days</p>
-
-              <div class="calendar-header">
-                <button class="btn cal-nav-btn" id="calPrevBtn" type="button">&larr;</button>
-                <span class="cal-month-label" id="calMonthLabel"></span>
-                <button class="btn cal-nav-btn" id="calNextBtn" type="button">&rarr;</button>
-              </div>
-              <div class="calendar-weekdays">
-                <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
-              </div>
-              <div class="calendar-grid" id="calendarGrid"></div>
-
-              <div class="calendar-legend">
-                <span><i class="legend-dot met"></i>Goal met</span>
-                <span><i class="legend-dot missed"></i>Goal missed</span>
-                <span><i class="legend-dot none"></i>No session</span>
-              </div>
             </div>
           </section>
         </section>

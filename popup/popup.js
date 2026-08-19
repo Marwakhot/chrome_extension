@@ -7,9 +7,20 @@ const countdownEl = document.getElementById("countdown");
 const catImage = document.getElementById("catImage");
 const catCaption = document.getElementById("catCaption");
 const dashboardBtn = document.getElementById("dashboardBtn");
+const emergencyBtn = document.getElementById("emergencyBtn");
 
 dashboardBtn.addEventListener("click", () => {
   chrome.runtime.openOptionsPage();
+});
+
+emergencyBtn.addEventListener("click", () => {
+  chrome.windows.create({
+    url: chrome.runtime.getURL("override/override.html"),
+    type: "popup",
+    width: 340,
+    height: 480,
+    focused: true
+  });
 });
 
 // Every 3 closed distraction tabs, the cat advances to the next, madder

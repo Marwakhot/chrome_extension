@@ -163,6 +163,14 @@
   .stop-btn:hover {
     transform: none;
   }
+  .emergency-btn {
+    width: 100%;
+    margin-top: 10px;
+    padding: 10px;
+    font-size: 11.5px;
+    background: var(--danger-soft);
+    color: var(--danger-deep);
+  }
 </style>
 </head>
 <body>
@@ -192,6 +200,7 @@
       </div>
       <p class="locked-note">The bouncer doesn't take bribes. Locked until time's up.</p>
       <button class="btn stop-btn" id="stopBtn" disabled>Locked Until Timer Ends</button>
+      <button class="btn emergency-btn" id="emergencyBtn" type="button">Emergency Break</button>
     </div>
   </div>
 

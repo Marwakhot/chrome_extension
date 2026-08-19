@@ -157,6 +157,17 @@ async function listFocusSessions() {
   return restFetch("/focus_sessions?select=*&order=started_at.desc");
 }
 
+async function logDistractionEvent(sessionId, domain, tabTitle) {
+  await restFetch("/distraction_events", {
+    method: "POST",
+    body: JSON.stringify({ session_id: sessionId, domain, tab_title: tabTitle || null })
+  });
+}
+
+async function listDistractionEvents() {
+  return restFetch("/distraction_events?select=domain&order=closed_at.desc&limit=2000");
+}
+
 // Preferences like the daily distraction goal are stored in the user's own
 // Supabase Auth metadata rather than a separate table, so this doesn't
 // require any extra SQL setup beyond the focus_sessions table.
@@ -211,6 +222,8 @@ self.BouncerAuth = {
   createFocusSessionRecord,
   updateFocusSessionRecord,
   listFocusSessions,
+  logDistractionEvent,
+  listDistractionEvents,
   getUser,
   updateUserMetadata
 };

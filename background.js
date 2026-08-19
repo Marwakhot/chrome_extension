@@ -124,8 +124,15 @@ async function logSessionStartRemote(startTime, durationMinutes) {
 async function endFocusSession() {
   const session = await getSession();
   if (session?.remoteId) {
+    // Use actual elapsed time, not the originally planned duration —
+    // sessions can now end early via the emergency override, and logging
+    // the planned length in that case would overstate real focus time in
+    // the dashboard stats. For a session that ran its full course this is
+    // the same value anyway.
+    const actualMinutes = Math.max(1, Math.round((Date.now() - session.startTime) / 60_000));
     self.BouncerAuth.updateFocusSessionRecord(session.remoteId, {
       ended_at: new Date().toISOString(),
+      duration_minutes: actualMinutes,
       distraction_count: session.distractionCount || 0
     }).catch((err) => console.log("[Bouncer] could not finalize session in Supabase:", err.message));
   }
@@ -190,6 +197,14 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
           });
           break;
         }
+        await endFocusSession();
+        sendResponse({ ok: true });
+        break;
+      }
+      case "EMERGENCY_OVERRIDE": {
+        // Only reachable by winning the emergency-override mini-game (see
+        // override/override.js), which is the deliberate friction that
+        // replaces the normal tamper-prevention check here.
         await endFocusSession();
         sendResponse({ ok: true });
         break;
@@ -267,8 +282,16 @@ async function evaluateTabInner(tabId) {
     console.log(`[FocusMode] tab ${tabId} has placeholder title, skipping`);
     return;
   }
+  if (tab.url.startsWith(chrome.runtime.getURL(""))) {
+    // Bouncer's own pages (dashboard, guest list, the emergency override
+    // game, the sarcastic alert popup) must never be evaluated or closed —
+    // hostnameFromUrl() alone doesn't catch these, since a chrome-extension://
+    // URL parses to a valid "hostname" (the extension's own ID), not null.
+    console.log(`[FocusMode] tab ${tabId} is one of Bouncer's own pages, skipping`);
+    return;
+  }
   if (!hostnameFromUrl(tab.url)) {
-    // chrome://, file://, extension pages, etc. are never touched.
+    // chrome://, file://, etc. are never touched.
     console.log(`[FocusMode] tab ${tabId} has no scriptable hostname, skipping`);
     return;
   }
@@ -285,7 +308,7 @@ async function evaluateTabInner(tabId) {
   const blocklist = await getBlocklist();
   if (isHostInList(tab.url, blocklist)) {
     console.log(`[FocusMode] tab ${tabId} matches the block list, closing`);
-    await closeDistractionTab(tabId, tab.title);
+    await closeDistractionTab(tabId, tab);
     return;
   }
 
@@ -295,16 +318,16 @@ async function evaluateTabInner(tabId) {
   console.log(`[FocusMode] tab ${tabId} classified as ${isDistraction ? "DISTRACTION" : "WORK"}`);
 
   if (isDistraction) {
-    await closeDistractionTab(tabId, tab.title);
+    await closeDistractionTab(tabId, tab);
   }
 }
 
-async function closeDistractionTab(tabId, tabTitle) {
+async function closeDistractionTab(tabId, tab) {
   try {
     await chrome.tabs.remove(tabId);
     console.log(`[FocusMode] closed tab ${tabId}`);
-    await recordDistraction();
-    notifyTabClosed(tabTitle);
+    await recordDistraction(hostnameFromUrl(tab.url), tab.title);
+    notifyTabClosed(tab.title);
   } catch (err) {
     // Benign race: the tab was already closed (by the user, or by an
     // earlier evaluation of the same tab) between our tabs.get() check
@@ -391,7 +414,7 @@ function showOsNotification(remark, closedTabTitle) {
   );
 }
 
-async function recordDistraction() {
+async function recordDistraction(domain, tabTitle) {
   const session = await getSession();
   if (!session) return;
   session.distractionCount = (session.distractionCount || 0) + 1;
@@ -402,5 +425,10 @@ async function recordDistraction() {
     self.BouncerAuth.updateFocusSessionRecord(session.remoteId, {
       distraction_count: session.distractionCount
     }).catch((err) => console.log("[Bouncer] could not sync distraction count to Supabase:", err.message));
+
+    if (domain) {
+      self.BouncerAuth.logDistractionEvent(session.remoteId, domain, tabTitle)
+        .catch((err) => console.log("[Bouncer] could not log distraction site to Supabase:", err.message));
+    }
   }
 }

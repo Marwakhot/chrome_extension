@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Bouncer",
   "version": "1.0.0",
-  "description": "Bouncer runs an un-cancellable focus timer and throws out distracting tabs on sight, using 100% local title classification.",
+  "description": "Bouncer runs a locked-down focus timer and throws out distracting tabs on sight, using 100% local title classification. An emergency override is available for real emergencies, gated behind a small memory game.",
   "permissions": [
     "tabs",
     "storage",
